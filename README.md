@@ -1,2 +1,2 @@
 # Image-Colorization
-Team project for Deep learning course.
+Team project for a course on deep learning.
