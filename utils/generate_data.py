@@ -33,6 +33,9 @@ def generate_data(image_directory, l_directory, ab_directory, shape, max_images=
             except:
                 print(filename)
 
+            if max_images % 1000 == 0:
+                print(f'{max_images} images left!')
+
             if max_images <= 0:
                 break
 
@@ -40,4 +43,4 @@ def generate_data(image_directory, l_directory, ab_directory, shape, max_images=
 generate_data("../../ILSVRC2012_img_val/",
               "../dataset/validation/input/",
               '../dataset/validation/ground_truth/',
-              (256, 256))
+              (256, 256), max_images=50000)
