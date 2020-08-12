@@ -126,3 +126,7 @@ dmypy.json
 
 # Dataset
 dataset/
+datasets/
+
+# Pepi venv name
+image-colorization/
