@@ -22,11 +22,11 @@ class Unet:
         self.image_size = 256
         self.batch_size = 1
 
-        keras.backend.set_image_data_format('channels_first')
+        #keras.backend.set_image_data_format('channels_first')
 
     def model(self):
-        ab = Input(shape=(3, 256, 256))
-        l = Input(shape=(1, 256, 256))
+        ab = Input(shape=(256, 256, 3))
+        l = Input(shape=(256, 256, 1))
 
         data_ab = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='ab_conv1_1')(ab)
         data_l = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='bw_conv1_1')(l)
@@ -132,8 +132,19 @@ class Unet:
 
 
 if __name__ == '__main__':
+
     unet = Unet()
 
     model = unet.model()
+    model.compile(optimizer='rmsprop', loss=tf.keras.losses.categorical_crossentropy, metrics=['accuracy'])
+
+
+    bw = np.ones(shape=(1, 256, 256, 1), dtype=float)
+    h = np.ones((1, 256, 256, 3), dtype=float)
+    res = np.ones((1, 256, 256, 2), dtype=float)
+
+    model.fit(x=[bw, h], y=res, epochs=1)
+
+    model.evaluate(x=[bw, h], y=res, batch_size=1)
 
 
