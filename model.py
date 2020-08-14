@@ -3,148 +3,166 @@ from tensorflow.keras import layers
 from tensorflow.keras import Model
 import keras
 from tensorflow.keras import Input
+from freeze import Freezer
 import pickle
 import numpy as np
 from keras import backend as K
 from keras.utils import plot_model
 
 
-def load_saved_weights(model, weights_path):
-    with open(weights_path, 'rb') as f:
-        weights = pickle.load(f)
-
-    for layer_name in weights.keys():
-        model.get_layer(name=layer_name).set_weights(weights[layer_name])
-
-
-class Unet:
+class ImageColorizationModel:
     def __init__(self):
         self.image_size = 256
         self.batch_size = 1
+        self.batch_norm_center = True
+        self.kernel_size = (3, 3)
 
-        #keras.backend.set_image_data_format('channels_first')
+        keras.backend.set_image_data_format('channels_first')
+
+    def input_block(self, input_l, input_ab):
+        data_ab = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='ab_conv1_1')(input_ab)
+        data_l = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='bw_conv1_1')(input_l)
+
+        output = layers.Multiply()([data_l, data_ab])
+
+        output = layers.ReLU()(output)
+
+        output = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
+                               name='conv1_2')(output)
+        output = layers.BatchNormalization(name='conv1_2norm', center=self.batch_norm_center)(output)
+
+        return output
+
+
+    def block_2_conv(self, block_input, filters, block_ind):
+        name1 = 'conv{}_1'.format(block_ind)
+        name2 = 'conv{}_2'.format(block_ind)
+        name_batch_norm = 'conv{}_2norm'.format(block_ind)
+
+        output = layers.Conv2D(filters=filters, kernel_size=(3, 3), padding='same', activation='relu',
+                               name=name1)(block_input)
+        output = layers.Conv2D(filters=filters, kernel_size=(3, 3), padding='same', activation='relu',
+                               name=name2)(output)
+        output = layers.BatchNormalization(name=name_batch_norm, center=self.batch_norm_center)(output)
+
+        return output
+
+    def block_3_conv(self, block_input, filters, block_ind, dilated=False):
+        name1 = 'conv{}_1'.format(block_ind)
+        name2 = 'conv{}_2'.format(block_ind)
+        name3 = 'conv{}_3'.format(block_ind)
+        name_batch_norm = 'conv{}_3norm'.format(block_ind)
+
+        if dilated:
+            dilation_rate = 2
+        else:
+            dilation_rate = 1
+
+        output = layers.Conv2D(filters=filters, kernel_size=(3, 3), padding='same', activation='relu',
+                               name=name1, dilation_rate=dilation_rate)(block_input)
+        output = layers.Conv2D(filters=filters, kernel_size=(3, 3), padding='same', activation='relu',
+                               name=name2, dilation_rate=dilation_rate)(output)
+        output = layers.Conv2D(filters=filters, kernel_size=(3, 3), padding='same', activation='relu',
+                               name=name3, dilation_rate=dilation_rate)(output)
+        output = layers.BatchNormalization(name=name_batch_norm, center=self.batch_norm_center)(output)
+
+        return output
+
+    def block_3_conv_skip_connection(self, block_input, filters, block_ind, skip_connection, skip_con_name):
+        name1 = 'conv{}_1'.format(block_ind)
+        name2 = 'conv{}_2'.format(block_ind)
+        name3 = 'conv{}_3'.format(block_ind)
+        name_batch_norm = 'conv{}_3norm'.format(block_ind)
+
+        output = layers.Conv2DTranspose(filters=filters, kernel_size=(4, 4), strides=2, padding='same',
+                                        name=name1)(block_input)
+        skip_8 = layers.Conv2D(filters=filters, kernel_size=(3, 3), strides=1, padding='same', name=skip_con_name)(skip_connection)
+
+        output = layers.Add()([output, skip_8])
+        output = layers.ReLU()(output)
+
+        output = layers.Conv2D(filters=filters, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
+                               name=name2)(output)
+        output = layers.Conv2D(filters=filters, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
+                               name=name3)(output)
+        output = layers.BatchNormalization(name=name_batch_norm, center=self.batch_norm_center)(output)
+
+        return output
+
+    def block_2_conv_skip_connection(self, block_input, filters, block_ind, skip_connection, skip_con_name):
+        name1 = 'conv{}_1'.format(block_ind)
+        name2 = 'conv{}_2'.format(block_ind)
+        name_batch_norm = 'conv{}_3norm'.format(block_ind)
+
+        output = layers.Conv2DTranspose(filters=filters, kernel_size=(4, 4), strides=2, padding='same',
+                                        name=name1)(block_input)
+        skip_8 = layers.Conv2D(filters=filters, kernel_size=(3, 3), strides=1, padding='same', name=skip_con_name)(
+            skip_connection)
+
+        output = layers.Add()([output, skip_8])
+        output = layers.ReLU()(output)
+
+        output = layers.Conv2D(filters=filters, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
+                               name=name2)(output)
+        output = layers.BatchNormalization(name=name_batch_norm, center=self.batch_norm_center)(output)
+
+        return output
 
     def model(self):
-        ab = Input(shape=(256, 256, 3))
-        l = Input(shape=(256, 256, 1))
+        ab = Input(shape=(3, 256, 256))
+        l = Input(shape=(1, 256, 256))
 
-        data_ab = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='ab_conv1_1')(ab)
-        data_l = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='bw_conv1_1')(l)
-
-        eltwise = layers.Multiply()([data_l, data_ab])
-        output = layers.ReLU()(eltwise)
-        output = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', activation='relu', name='conv1_2')(output)
-        output = layers.BatchNormalization(name='conv1_2norm', scale=False, center=False)(output)
+        output = self.input_block(l, ab)
 
         skip_10 = output
 
-        output = layers.MaxPooling2D(pool_size=(2, 2), name='conv1_2norm_ss')(output)
-        output = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv2_1')(output)
-        output = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv2_2')(output)
-        output = layers.BatchNormalization(name='conv2_2norm')(output)
+        output = layers.MaxPooling2D(pool_size=(2, 2))(output)
+
+        output = self.block_2_conv(output, 128, 2)
 
         skip_9 = output
 
-        output = layers.MaxPooling2D(pool_size=(2, 2), name='conv2_2norm_ss')(output)
-        output = layers.Conv2D(filters=256, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv3_1')(output)
-        output = layers.Conv2D(filters=256, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv3_2')(output)
-        output = layers.Conv2D(filters=256, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv3_3')(output)
-        output = layers.BatchNormalization(name='conv3_3norm')(output)
+        output = layers.MaxPooling2D(pool_size=(2, 2))(output)
+
+        output = self.block_3_conv(output, 256, 3)
 
         skip_8 = output
 
-        output = layers.MaxPooling2D(pool_size=(2, 2), name='conv3_3norm_ss')(output)
+        output = layers.MaxPooling2D(pool_size=(2, 2))(output)
+        output = self.block_3_conv(output, 512, 4)
 
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv4_1')(output)
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv4_2')(output)
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv4_3')(output)
-        output = layers.BatchNormalization(name='conv4_3norm')(output)
+        output = self.block_3_conv(output, 512, 5, dilated=True)
 
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv5_1')(output)
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv5_2')(output)
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv5_3')(output)
-        output = layers.BatchNormalization(name='conv5_3norm')(output)
+        output = self.block_3_conv(output, 512, 6, dilated=True)
 
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv6_1')(output)
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv6_2')(output)
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv6_3')(output)
-        output = layers.BatchNormalization(name='conv6_3norm')(output)
+        output = self.block_3_conv(output, 512, 7)
 
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv7_1')(output)
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv7_2')(output)
-        output = layers.Conv2D(filters=512, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv7_3')(output)
-        output = layers.BatchNormalization(name='conv7_3norm')(output)
+        output = self.block_3_conv_skip_connection(output, 256, 8, skip_8, skip_con_name='conv3_3_short')
 
-        output = layers.Conv2DTranspose(filters=256, kernel_size=(4, 4), strides=2, padding='same',
-                                               name='conv8_1')(output)
-        skip_8 = layers.Conv2D(filters=256, kernel_size=(3, 3), strides=1, padding='same', name='conv3_3_short')(skip_8)
-        output = layers.Add()([output, skip_8])
-        output = layers.ReLU()(output)
-        output = layers.Conv2D(filters=256, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv8_2')(output)
-        output = layers.Conv2D(filters=256, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv8_3')(output)
-        output = layers.BatchNormalization(name='conv8_3norm')(output)
+        output = self.block_3_conv_skip_connection(output, 128, 9, skip_9, skip_con_name='conv2_2_short')
 
-        output = layers.Conv2DTranspose(filters=128, kernel_size=(4, 4), strides=2, padding='same',
-                                               name='conv9_1')(output)
-        skip_9 = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, padding='same', name='conv2_2_short')(skip_9)
-        output = layers.Add()([output, skip_9])
-        output = layers.ReLU()(output)
-        output = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv9_2')(output)
-        output = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                      name='conv9_3')(output)
-        output = layers.BatchNormalization(name='conv9_3norm')(output)
+        # block 10
 
-        output = layers.Conv2DTranspose(filters=128, kernel_size=(4, 4), strides=2, padding='same',
-                                                name='conv10_1')(output)
-        skip_10 = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, padding='same', name='conv1_2_short')(skip_10)
-
-        output = layers.Add()([output, skip_10])
-        output = layers.ReLU()(output)
-        output = layers.Conv2D(filters=128, kernel_size=(3, 3), strides=1, padding='same', activation='relu',
-                                       name='conv10_2')(output)
+        output = self.block_2_conv_skip_connection(output, 128, 10, skip_10, skip_con_name='conv1_2_short')
 
         output = layers.Conv2D(filters=2, kernel_size=(1, 1), strides=1, padding='same', activation='tanh',
                                         name='conv10_ab')(output)
-
-        # TODO: scale output
 
         return Model([l, ab], output)
 
 
 if __name__ == '__main__':
+    net = ImageColorizationModel()
+    model = net.model()
+    freezer = Freezer(model)
+    model.load_weights('convertedWeights.h5', by_name=True)
+    freezer.freeze_layers_old()
 
-    unet = Unet()
-
-    model = unet.model()
     model.compile(optimizer='rmsprop', loss=tf.keras.losses.categorical_crossentropy, metrics=['accuracy'])
 
 
-    bw = np.ones(shape=(1, 256, 256, 1), dtype=float)
-    h = np.ones((1, 256, 256, 3), dtype=float)
-    res = np.ones((1, 256, 256, 2), dtype=float)
 
-    model.fit(x=[bw, h], y=res, epochs=1)
 
-    model.evaluate(x=[bw, h], y=res, batch_size=1)
+
 
 
