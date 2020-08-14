@@ -1,10 +1,13 @@
 import keras.backend as K
 import tensorflow as tf
+import numpy as np
 from tensorflow.keras.preprocessing import image_dataset_from_directory
-from . import LocalHintsGenerator
+from .generate_local_hints import LocalHintsGenerator
+from skimage.color import rgb2lab
 
 class DataGenerator(tf.keras.utils.Sequence):
     def __init__(self, batch_size, image_size, image_dataset, shuffle=False):
+        print("Initialized")
         self.batch_size = batch_size
         self.image_dataset = image_dataset
         self.shuffle = shuffle
@@ -14,11 +17,18 @@ class DataGenerator(tf.keras.utils.Sequence):
     
     def __len__(self):
         return tf.data.experimental.cardinality(self.image_dataset)
+
+    def preprocess_images_batch(self, image_batch):
+        image_batch_lab = np.zeros_like((image_batch))
+        for i in range(image_batch.shape[0]):
+            image_batch_lab[i] = rgb2lab(image_batch[i] / 256)
+        return image_batch_lab[:, :, :, 0:1] / 100, image_batch_lab[:, :, :, 1:3] / 128
     
     def __getitem__(self, index):
+        print(index)
         for image_batch in self.image_dataset.skip(index).take(1):
-            l, ab = preprocess_images_batch(image_batch)
-        local_hints_batch = self.local_hints_generator.localgenerate_local_hints_batch(ab)
+            l, ab = self.preprocess_images_batch(image_batch)
+        local_hints_batch = self.local_hints_generator.generate_local_hints_batch(ab)
         return [l, local_hints_batch], ab
     
     def on_epoch_end(self):
