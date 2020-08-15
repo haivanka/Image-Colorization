@@ -11,12 +11,13 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.image_dataset = image_dataset
         self.shuffle = shuffle
         self.image_size = image_size
+        print(type(image_dataset))
         self.local_hints_generator = LocalHintsGenerator(h=self.image_size[0], w=self.image_size[1])
         self.name = name
         self.on_epoch_end()
     
     def __len__(self):
-        return tf.data.experimental.cardinality(self.image_dataset)
+        return self.image_dataset.__len__()
 
     def preprocess_images_batch(self, image_batch):
         image_batch_lab = np.zeros_like((image_batch))
@@ -25,8 +26,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         return image_batch_lab[:, :, :, 0:1] / 100, image_batch_lab[:, :, :, 1:3] / 128
     
     def __getitem__(self, index):
-        for image_batch in self.image_dataset.skip(index).take(1):
-            l, ab = self.preprocess_images_batch(image_batch)
+        l, ab = self.preprocess_images_batch(self.image_dataset.__getitem__(index)[0])
         local_hints_batch = self.local_hints_generator.generate_local_hints_batch(ab)
         return [l, local_hints_batch], ab
     
