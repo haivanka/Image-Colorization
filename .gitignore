@@ -130,3 +130,6 @@ datasets/
 
 # Pepi venv name
 image-colorization/
+
+# trained models
+models/
