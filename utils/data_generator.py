@@ -1,7 +1,6 @@
 import keras.backend as K
 import tensorflow as tf
 import numpy as np
-from tensorflow.keras.preprocessing import image_dataset_from_directory
 from .generate_local_hints import LocalHintsGenerator
 from skimage.color import rgb2lab
 
