@@ -17,8 +17,6 @@ class ImageColorizationModel:
         self.batch_norm_center = True
         self.kernel_size = (3, 3)
 
-        keras.backend.set_image_data_format('channels_first')
-
     def input_block(self, input_l, input_ab):
         data_ab = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='ab_conv1_1')(input_ab)
         data_l = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='bw_conv1_1')(input_l)
@@ -109,8 +107,8 @@ class ImageColorizationModel:
         return output
 
     def model(self):
-        ab = Input(shape=(3, 256, 256))
-        l = Input(shape=(1, 256, 256))
+        ab = Input(shape=(256, 256, 3))
+        l = Input(shape=(256, 256, 1))
 
         output = self.input_block(l, ab)
 
