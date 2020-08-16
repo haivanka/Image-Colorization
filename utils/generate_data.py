@@ -5,6 +5,16 @@ from skimage.io import imread
 from skimage.transform import resize
 
 
+def generate_data_example(image, shape):
+    resized_image = resize(image, shape)
+    l, a, b = convert_color_space.get_lab(resized_image)
+    l /= 100
+    a /= 128
+    b /= 128
+
+    ground_truth = np.dstack((a, b))
+    return l, ground_truth
+
 def generate_data(image_directory, l_directory, ab_directory, shape, max_images=100):
     if not os.path.exists(l_directory):
         os.makedirs(l_directory)
@@ -40,7 +50,7 @@ def generate_data(image_directory, l_directory, ab_directory, shape, max_images=
                 break
 
 
-generate_data("../../ILSVRC2012_img_val/",
-              "../dataset/validation/input/",
-              '../dataset/validation/ground_truth/',
-              (256, 256), max_images=50000)
+# generate_data("../../ILSVRC2012_img_val/",
+#               "../dataset/validation/input/",
+#               '../dataset/validation/ground_truth/',
+#               (256, 256), max_images=50000)

@@ -6,7 +6,7 @@ from skimage.io import imread, imshow
 
 def get_lab(image):
     image_labspace = rgb2lab(image)
-    return image_labspace[:, :, 0], image_labspace[:, :, 1], image_labspace[:, :, 2]
+    return image_labspace[:, :, 0:1], image_labspace[:, :, 1], image_labspace[:, :, 2]
 
 
 def get_lab_from_relative_path(path):
