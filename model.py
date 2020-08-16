@@ -52,7 +52,7 @@ class ImageColorizationModel:
         name_batch_norm = 'conv{}_3norm'.format(block_ind)
 
         if dilated:
-            dilation_rate = 2
+            dilation_rate = 1
         else:
             dilation_rate = 1
 
