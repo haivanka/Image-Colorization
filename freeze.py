@@ -38,5 +38,8 @@ class Freezer:
     def freeze_layers_new(self):
         self.freeze_layers(get_layer_names_new())
 
+    def unfreeze(self):
+        self.model.trainable = True
+
 
 
