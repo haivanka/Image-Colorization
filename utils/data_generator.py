@@ -5,7 +5,7 @@ from .generate_local_hints import LocalHintsGenerator
 from skimage.color import rgb2lab
 
 class DataGenerator(tf.keras.utils.Sequence):
-    def __init__(self, batch_size, image_size, image_dataset, name=None, shuffle=False, length):
+    def __init__(self, batch_size, image_size, image_dataset, name=None, shuffle=False, length=1):
         self.batch_size = batch_size
         self.image_dataset = image_dataset
         self.shuffle = shuffle
