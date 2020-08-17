@@ -22,7 +22,7 @@ class ImageColorizationModel:
         data_ab = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='ab_conv1_1')(input_ab)
         data_l = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='bw_conv1_1')(input_l)
 
-        output = layers.Multiply()([data_l, data_ab])
+        output = layers.Add()([data_l, data_ab])
 
         output = layers.ReLU()(output)
 
@@ -53,7 +53,7 @@ class ImageColorizationModel:
         name_batch_norm = 'conv{}_3norm'.format(block_ind)
 
         if dilated:
-            dilation_rate = 2
+            dilation_rate = 1
         else:
             dilation_rate = 1
 
