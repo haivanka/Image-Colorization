@@ -17,6 +17,7 @@ class ImageColorizationModel:
         self.batch_norm_center = True
         self.kernel_size = (3, 3)
 
+
     def input_block(self, input_l, input_ab):
         data_ab = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='ab_conv1_1')(input_ab)
         data_l = layers.Conv2D(filters=64, kernel_size=(3, 3), strides=1, padding='same', name='bw_conv1_1')(input_l)
@@ -148,15 +149,25 @@ class ImageColorizationModel:
 
         return Model([l, ab], output)
 
+    def PSNR(y_true, y_pred):
+        max_pixel = 1.0
+        return (10.0 * K.log((max_pixel ** 2) / (K.mean(K.square(y_pred - y_true), axis=-1)))) / 2.303
+
 
 if __name__ == '__main__':
     net = ImageColorizationModel()
     model = net.model()
-    freezer = Freezer(model)
-    model.load_weights('convertedWeights.h5', by_name=True)
-    freezer.freeze_layers_old()
 
-    model.compile(optimizer='rmsprop', loss=tf.keras.losses.categorical_crossentropy, metrics=['accuracy'])
+    #freezer = Freezer(model)
+    model.load_weights('convertedWeights.h5', by_name=True)
+
+    #freezer.freeze_layers_old()
+
+    model.compile(optimizer='rmsprop', loss=tf.keras.losses.categorical_crossentropy, metrics=['val_acc'])
+
+    model_json = model.to_json()
+    with open("web_app/test_model.json", "w") as json_file:
+        json_file.write(model_json)
 
 
 

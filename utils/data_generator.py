@@ -1,4 +1,3 @@
-import keras.backend as K
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras.preprocessing import image_dataset_from_directory

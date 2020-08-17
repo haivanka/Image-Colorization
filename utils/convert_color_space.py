@@ -18,6 +18,10 @@ def concat_l_and_ab(l, ab):
     return np.dstack((l, ab))
 
 
+def get_rgb(image):
+    return lab2rgb(image)
+
+
 def test():
     l, a, b = get_lab_from_relative_path("../sample_images/image_00.jpg")
     only_l = np.dstack((l, np.zeros(l.shape), np.zeros(l.shape)))
