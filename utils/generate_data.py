@@ -1,19 +1,24 @@
-import convert_color_space
+from utils.convert_color_space import get_lab
 import os
 import numpy as np
 from skimage.io import imread
 from skimage.transform import resize
+from utils.convert_color_space import get_lab
 
 
 def generate_data_example(image, shape):
     resized_image = resize(image, shape)
-    l, a, b = convert_color_space.get_lab(resized_image)
+    l, a, b = get_lab(resized_image)
     l /= 100
     a /= 128
     b /= 128
 
     ground_truth = np.dstack((a, b))
     return l, ground_truth
+
+def generate_mask(hints):
+    mask = np.zeros((256, 256, 1))
+    return mask
 
 def generate_data(image_directory, l_directory, ab_directory, shape, max_images=100):
     if not os.path.exists(l_directory):
@@ -27,7 +32,7 @@ def generate_data(image_directory, l_directory, ab_directory, shape, max_images=
             try:
                 original_image = imread(image_directory + filename)
                 resized_image = resize(original_image, shape)
-                l, a, b = convert_color_space.get_lab(resized_image)
+                l, a, b = get_lab(resized_image)
                 l /= 100
                 a /= 128
                 b /= 128

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Image Classifier</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+    <link href="//getbootstrap.com/examples/jumbotron-narrow/jumbotron-narrow.css" rel="stylesheet">
+    <style>
+        body{
+            width:100%;
+            background-color:#FFE4E1;
+        }
+        .jumbotron{
+            width:100%;
+            background-color:#E9967A;
+        }
+        .btn-file {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-file input[type=file] {
+            position: absolute;
+            top: 0;
+            right: 0;
+            min-width: 100%;
+            min-height: 100%;
+            font-size: 100px;
+            text-align: right;
+            filter: alpha(opacity=0);
+            opacity: 0;
+            outline: none;
+            background: white;
+            cursor: inherit;
+            display: block;
+        }
+        .img-upload{
+            position:relative;
+            z-index:1;
+            height: 256px;
+        }
+        .uploadedImg{
+            display:inline-block;
+            width:256px;
+            height:256px;
+            margin:20px;
+            position:relative;
+        }
+        .input-group{
+            margin-bottom:20px
+        }
+        .canvas{
+            position:absolute;
+            z-index:20;
+            top:0;
+            left:0;
+        }
+        .submitBtn{
+            background-color:#E9967A;
+            margin-top:50px;
+        }
+        .displayResult{
+            text-align:center;
+            margin-top: 30%;
+        }
+        .input-group{
+            width:90%;
+        }
+    </style>
+    <script src="../static/js/jquery-3.1.1.js"></script>
+</head>
+<body>
+<div class="container-body-content">
+    <div class="row text-center">
+       <div class="jumbotron">
+           <h2><b>Image Colorization</b></h2>
+       </div>
+    </div>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="input-group text-center">
+                    <form id="fileUploadForm" method="post" enctype="multipart/form-data">
+                        <h2>Upload Image</h2>
+                        <div class="input-group">
+                            <span class="input-group-btn">
+                                <span class="btn btn-primary btn-file">
+                                    Browse...<input type="file" name="image" id="image">
+                                </span>
+                            </span>
+                            <input type="text" class="form-control" readonly>
+                            <input id="pixels" name="pixels" type="hidden" value="">
+                        </div>
+                        <div class="row text-center">
+                            <div class="text-center uploadedImg">
+                                <img id="img-upload" class="img-upload" height="256px" width="256px">
+                                <canvas id="canvas" height="256px" width="256px"></canvas>
+                                 <label for="color">Select color:</label>
+                                 <input type="color" id="color" name="color" value="#ff0000">
+                            </div>
+                            <div class="form-group submitBtn">
+                                <p class="text-center">
+                                    <input id="submitBtn" name="submitBtn" class="btn btn-primary" type="submit" value="Colorize" />
+                                </p>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="displayResult" id="display-resources">
+                </div>
+            </div>
+    </div>
+    </div>
+
+</div>
+<script>
+    var canvas = document.getElementById('canvas');
+    var context = canvas.getContext('2d');
+
+    document.getElementById('pixels').value = canvas.toDataURL("image/png");
+
+    $(document).ready(function () {
+        $("#submitBtn").click(function (event) {
+            event.preventDefault();
+			var displayResources = $('#display-resources');
+			var form = $('#fileUploadForm')[0];
+			var data = new FormData(form);
+			var canvas = document.getElementById('canvas');
+			data.append('pixels', canvas.toDataURL())
+
+			$.ajax({
+			    type: "POST",
+			    enctype: 'multipart/form-data',
+			    url: "/predict",
+			    data: data,
+			    processData: false,
+			    contentType: false,
+			    cache: false,
+			    timeout: 600000,
+			    timeout: 600000,
+			    success: function (data) {
+			    var div = document.getElementById('display-resources')
+
+			    var image = document.createElement("img");
+			    image.src = "data:image/png;base64," + data;
+			    $("#display-resources").empty();
+			    $("#display-resources").append(image);
+			    },
+			    error: function (e) {
+			        alert("unsuccessful");
+			    }
+			});
+		});
+	});
+</script>
+</body>
+
+<script src="../static/js/script.js"></script>
+<script src="../static/js/jquery-3.1.1.js"></script>
+</html>
