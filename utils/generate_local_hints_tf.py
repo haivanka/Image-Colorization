@@ -31,7 +31,7 @@ class LocalHintsGenerator():
 
         jump = (self.h - 20) // hints
         for i in range(hints):
-            print(i * jump)
+            # print(i * jump)
             pixel_x.append(tf.random.uniform(shape=[1, 1], minval= i * jump + 5, maxval= (i + 1) * jump, dtype=tf.int64))
 
 
@@ -39,11 +39,11 @@ class LocalHintsGenerator():
         # yyy = tf.concat(pixel_y, axis=0)
         yyy = tf.random.uniform(shape=[hints, 1], minval=5, maxval=250, dtype=tf.int64)
 
-        print(xxx.shape)
-        print(yyy.shape)
+        # print(xxx.shape)
+        # print(yyy.shape)
 
         pixel = tf.concat([xxx, yyy], axis=1)
-        print(pixel.shape)
+        # print(pixel.shape)
 
         # pixel = tf.random.uniform(shape=[hints, 2], minval=5, maxval=self.h - 5, dtype=tf.int64)
         # pixel = tf.unique(pixel)
