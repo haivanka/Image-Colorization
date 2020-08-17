@@ -2,12 +2,14 @@ from tensorflow.keras.models import model_from_json
 from tensorflow.keras.losses import categorical_crossentropy
 import numpy as np
 from PIL import Image
+import tensorflow as tf
 
 from skimage.io import imread
 from utils.generate_data import generate_data_example
 from utils.generate_data import generate_mask
 from utils.generate_local_hints import LocalHintsGenerator
 from utils.convert_color_space import get_rgb
+import keras.backend as K
 
 
 class Colorization:
@@ -16,17 +18,33 @@ class Colorization:
         self.weights_path = '../convertedWeights.h5'
         self.model = self.init_model()
 
-    def init_model(self):
-        json_file = open(self.model_json_path, 'r')
-        loaded_model_json = json_file.read()
-        json_file.close()
-        model = model_from_json(loaded_model_json)
-        model.load_weights(self.weights_path, by_name=True)
+        self.delta = 1
 
-        model.compile(loss=categorical_crossentropy,
-                      optimizer='adam',
-                      metrics=['accuracy'])
-        return model
+    def l_delta_loss(self, y_true, y_pred):
+        smaller = K.cast(K.abs(y_true - y_pred) < self.delta, tf.float32)
+        bigger = 1 - smaller
+        loss = K.sum(smaller * K.square(y_true - y_pred)) / 2 + self.delta * K.sum(
+            bigger * (K.abs(y_true - y_pred) - (self.delta / 2)))
+        return loss
+
+    def PSNR(self, y_true, y_pred):
+        return tf.image.psnr(a=y_true, b=y_pred, max_val=2)
+
+    def init_model(self):
+        # json_file = open(self.model_json_path, 'r')
+        # loaded_model_json = json_file.read()
+        # json_file.close()
+        # model = model_from_json(loaded_model_json)
+        # model.load_weights(self.weights_path, by_name=True)
+        #
+        # model.compile(loss=categorical_crossentropy,
+        #               optimizer='adam',
+        #               metrics=['accuracy'])
+        loaded_model = tf.keras.models.load_model('./models/model.02-16948.52.h5', custom_objects={
+            'l_delta_loss': self.l_delta_loss,
+            'huber_loss': tf.compat.v1.losses.huber_loss,
+            'PSNR': self.PSNR})
+        return loaded_model
 
     def preprocess_image(self, image, hints):
         l, ground_truth = generate_data_example(image, (256, 256, 3))

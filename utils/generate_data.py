@@ -3,6 +3,7 @@ import os
 import numpy as np
 from skimage.io import imread
 from skimage.transform import resize
+from utils.convert_color_space import get_lab
 
 
 def generate_data_example(image, shape):
@@ -31,7 +32,7 @@ def generate_data(image_directory, l_directory, ab_directory, shape, max_images=
             try:
                 original_image = imread(image_directory + filename)
                 resized_image = resize(original_image, shape)
-                l, a, b = convert_color_space.get_lab(resized_image)
+                l, a, b = get_lab(resized_image)
                 l /= 100
                 a /= 128
                 b /= 128
