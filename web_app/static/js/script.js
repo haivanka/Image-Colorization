@@ -10,6 +10,7 @@ $(document).ready( function() {
     context.fillStyle = color;
     context.fill();
 
+
     var paint;
 
     $('#canvas').mousedown(function(e){

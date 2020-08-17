@@ -140,9 +140,12 @@
 			    timeout: 600000,
 			    timeout: 600000,
 			    success: function (data) {
+			    var div = document.getElementById('display-resources')
+
 			    var image = document.createElement("img");
 			    image.src = "data:image/png;base64," + data;
-			    document.body.appendChild(image);
+			    $("#display-resources").empty();
+			    $("#display-resources").append(image);
 			    },
 			    error: function (e) {
 			        alert("unsuccessful");

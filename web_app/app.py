@@ -1,4 +1,4 @@
-from flask import Flask, render_template, url_for, request, jsonify, send_file
+from flask import Flask, render_template, url_for, request, jsonify, send_from_directory, send_file
 from flask_bootstrap import Bootstrap
 import os
 import io
@@ -20,10 +20,6 @@ Bootstrap(app)
 def index():
     return render_template('index.html')
 
-@app.route('/upload', methods=['POST'])
-def upload():
-    imagefile = request.files['image']
-
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -38,26 +34,13 @@ def predict():
     with open(hints_filename, "wb") as fh:
         fh.write(base64.urlsafe_b64decode(image_data))
 
-
     rgb_img = colorization.colorize(filepath, hints_filename)
 
-    colorized_filepath = os.path.join('colorized', imagefile.filename)
+    colorized_filepath = os.path.join('colorized', imagefile.filename + '.png')
     rgb_img.save(colorized_filepath)
 
-    file_object = io.BytesIO()
-    rgb_img.save(file_object, 'PNG')
-    file_object.seek(0)
-
-    return send_file(file_object, mimetype='image/PNG')
-
-    # image = Image.open(filepath).convert('RGB')
-    # return jsonify(prediction=classify_image(loaded_model, image))
-
-
-    #return jsonify(path="../" + colorized_filepath)
-
-    #return flask.send_file(colorized_filepath, mimetype='image/gif')
-    #return render_template("index.html", user_image=colorized_filepath)
+    encoded = base64.b64encode(open(colorized_filepath, "rb").read())
+    return encoded
 
 
 if __name__ == '__main__':
