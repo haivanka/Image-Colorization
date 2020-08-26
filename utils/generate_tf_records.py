@@ -24,7 +24,7 @@ from convert_color_space import get_lab
 import numpy as np
 from skimage.color import rgb2lab
 from rgb_to_lab_tf import rgb_to_lab, lab_to_rgb
-from generate_local_hints_tf import LocalHintsGenerator
+from generate_local_hints import LocalHintsGenerator
 
 
 def bytes_feature(value):
@@ -72,7 +72,7 @@ feature_description = {
 
 def _parse_function(example_proto):
     # print(example_proto)
-    return tf.io.parse_single_example(example_proto, feature_description), tf.zeros([256, 256, 2])
+    return tf.io.parse_single_example(example_proto, feature_description)
 
 
 def prepare_image(img):
@@ -133,12 +133,100 @@ def generate_tf_records(input_dir, output_dir, num_shards, split_ratio, seed=42)
                      dataset_name='validation',
                      filenames=filenames[:num_test],
                      num_shards=num_shards_test)
+                     
+feature_description_mask = {
+    'mask_compressed': tf.io.FixedLenFeature([], tf.string)
+}
+
+def _parse_function_mask(example_proto):
+    # print(example_proto)
+    mask_compressed = tf.io.parse_single_example(example_proto, feature_description_mask)['mask_compressed']
+    
+    return tf.io.parse_tensor(mask_compressed, tf.string)
+
+
+def read_tf_record_mask():
+    raw_data = tf.data.TFRecordDataset(["../tf-records-masks/train_0000-of-0001.tfrecord",
+                                        "../tf-records-masks/test_0000-of-0001.tfrecord"])
+
+    raw_data = raw_data.map(lambda raw_record: _parse_function_mask(raw_record))
+    raw_data = raw_data.map(lambda raw_record: tf.io.decode_png(raw_record))
+
+    for raw_record in raw_data.take(10):
+        image_np = raw_record.numpy()
+        print(np.amin(image_np), np.amax(image_np))
+        print(image_np.shape)
+        plt.imshow(image_np, vmin=0, vmax=255)
+        plt.show()
+
+def create_mask_tfexample(mask_compressed):
+    example = tf.train.Example(features=tf.train.Features(feature={
+            'mask_compressed': bytes_feature(mask_compressed)
+    }))
+    return example
+
+def create_mask_tfrecords(output_dir, num_masks, dataset_name, num_shards, seed=42):
+    masks_per_shard = int(num_masks / num_shards) + 1
+
+    masks_generator = LocalHintsGenerator(256, 256, batch_size=masks_per_shard, window_size=1)
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    for shard in range(num_shards):
+        output_filename = os.path.join(output_dir, '{}_{:04d}-of-{:04d}.tfrecord'
+                                       .format(dataset_name, shard, num_shards))
+        print('Writing into {}'.format(output_filename))
+        masks_shard = masks_generator.generate_local_hints_batch()
+
+        with tf.io.TFRecordWriter(output_filename) as tfrecord_writer:
+            for mask in masks_shard:
+                mask = tf.cast(mask * 255, tf.uint8)
+                mask_compressed = tf.image.encode_png(mask)
+                mask_compressed = tf.io.serialize_tensor(mask_compressed).numpy()
+                example = create_mask_tfexample(mask_compressed)
+                tfrecord_writer.write(example.SerializeToString())
+
+    print('Finished writing {} images into TFRecords'.format(num_masks))
+
+def generate_masks_tf_records(num_masks, output_dir, num_shards):
+
+    create_mask_tfrecords(output_dir=output_dir,
+                          num_masks=num_masks['train'],
+                          dataset_name='train',
+                          num_shards=num_shards['train'])
+                          
+    create_mask_tfrecords(output_dir=output_dir,
+                          num_masks=num_masks['validation'],
+                          dataset_name='validation',
+                          num_shards=num_shards['validation'])
+
+    create_mask_tfrecords(output_dir=output_dir,
+                          num_masks=num_masks['test'],
+                          dataset_name='test',
+                          num_shards=num_shards['test'])
 
 if __name__ == '__main__':
-    input_dir = '../sample_images'
-    output_dir = '../tf_records'
-    num_shards = 500
-    split_ratio = 0.1
+    # input_dir = '../sample_images'
+    # output_dir = '../tf_records'
+    # num_shards = 500
+    # split_ratio = 0.1
 
-    # generate_tf_records(input_dir, output_dir, num_shards, split_ratio)
-    read_tf_record()
+    # # generate_tf_records(input_dir, output_dir, num_shards, split_ratio)
+    # read_tf_record()
+
+    output_dir_masks = '../tf-records-masks'
+    num_shards = {
+        'train': 1,
+        'validation': 1,
+        'test': 1,
+    }
+    num_masks = {
+        'train': 1000,
+        'validation': 1000,
+        'test': 1000,
+    }
+
+    generate_masks_tf_records(num_masks, output_dir_masks, num_shards)
+
+    read_tf_record_mask()

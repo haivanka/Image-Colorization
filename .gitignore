@@ -131,10 +131,12 @@ datasets/
 # Pepi venv name
 image-colorization/
 
-<<<<<<< HEAD
-sample_images/
-*.h5
-=======
 # trained models
 models/
->>>>>>> e5eb3bb87631385e8ec647f74d05d4e1f9ba0230
+
+# .h5 files
+*.h5
+
+# tfrecords
+tf-records/
+tf-records-masks/
