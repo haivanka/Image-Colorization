@@ -51,12 +51,10 @@ class Colorization:
         #hints_generator = LocalHintsGenerator(256, 256)
         #hints = hints_generator.generate_local_hints(ground_truth)
 
-        hints_l, hints_ab = generate_data_example(hints, (256, 256, 3))
-
+        hints = generate_mask(hints)
+        
         l_input = np.reshape(l, (1, 256, 256, 1))
         ground_truth = np.reshape(ground_truth, (1, 256, 256, 2))
-        hints_mask = generate_mask(hints_ab)
-        hints = np.dstack((hints_ab, hints_mask))
         hints_input = np.reshape(hints, (1, 256, 256, 3))
 
         return l, l_input, hints_input, ground_truth
@@ -69,9 +67,9 @@ class Colorization:
 
         ab = self.get_ab(l_input, hints_input)
 
-        result_img = np.dstack((l, ab))
-        rgb_img = get_rgb(result_img)
-        rgb_img = Image.fromarray(rgb_img, 'RGB')
+        result_img = np.dstack((l * 100, ab * 127))
+        rgb_img = get_rgb(result_img) * 255
+        rgb_img = Image.fromarray(np.uint8(rgb_img), 'RGB')
 
         return rgb_img
 
