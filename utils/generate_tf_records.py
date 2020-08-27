@@ -86,22 +86,19 @@ def prepare_image(img):
     l = img[:, :, 0:1]
     ab = img[:, :, 1:3]
 
-    generator = LocalHintsGenerator(256, 256)
-    local_hints = generator.generate_local_hints(ab)
-
-    return {'input_2': l, 'input_1': local_hints}, ab
+    return l, ab
 
 def read_tf_record():
-    raw_data = tf.data.TFRecordDataset(["../tf_records/train_000-of-001.tfrecord",
-                                        "../tf_records/train_000-of-001.tfrecord"])
+    raw_data = tf.data.TFRecordDataset(["../tf-records/train_000-of-003.tfrecord",
+                                        "../tf-records/train_001-of-003.tfrecord"])
 
     raw_data = raw_data.map(lambda raw_record: _parse_function(raw_record))
-    raw_data = raw_data.map(lambda raw_record, label: prepare_image(raw_record['image_bytes']))
+    raw_data = raw_data.map(lambda raw_record: prepare_image(raw_record['image_bytes']))
 
     for raw_record in raw_data.take(2):
         image = raw_record
 
-        image_np = image[0]['input_2'].numpy()
+        image_np = image[0].numpy()
         print(image_np.shape)
         plt.imshow(image_np)
         plt.show()
@@ -154,8 +151,6 @@ def read_tf_record_mask():
 
     for raw_record in raw_data.take(10):
         image_np = raw_record.numpy()
-        print(np.amin(image_np), np.amax(image_np))
-        print(image_np.shape)
         plt.imshow(image_np, vmin=0, vmax=255)
         plt.show()
 
@@ -168,7 +163,7 @@ def create_mask_tfexample(mask_compressed):
 def create_mask_tfrecords(output_dir, num_masks, dataset_name, num_shards, seed=42):
     masks_per_shard = int(num_masks / num_shards) + 1
 
-    masks_generator = LocalHintsGenerator(256, 256, batch_size=masks_per_shard, window_size=1)
+    masks_generator = LocalHintsGenerator(256, 256, batch_size=masks_per_shard, window_size=5)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -189,6 +184,38 @@ def create_mask_tfrecords(output_dir, num_masks, dataset_name, num_shards, seed=
 
     print('Finished writing {} images into TFRecords'.format(num_masks))
 
+# image is of format (l, ab)
+def prepare_input_output(image, mask):
+    mask = tf.cast(mask, tf.float32) / 255.0
+    return {'input_1': image[0], 'input_2': image[1] * mask}, image[1]
+
+def read_tf_both():
+    raw_data_images = tf.data.TFRecordDataset(["../tf-records/train_000-of-003.tfrecord",
+                                               "../tf-records/train_000-of-003.tfrecord",
+                                               "../tf-records/train_000-of-003.tfrecord",
+                                               "../tf-records/train_000-of-003.tfrecord",
+                                               "../tf-records/train_000-of-003.tfrecord",
+                                               "../tf-records/train_000-of-003.tfrecord",
+                                               "../tf-records/train_000-of-003.tfrecord",
+                                               "../tf-records/train_000-of-003.tfrecord",
+                                               "../tf-records/train_000-of-003.tfrecord",
+                                               "../tf-records/train_000-of-003.tfrecord",
+                                               "../tf-records/train_001-of-003.tfrecord"])
+    raw_data_images = raw_data_images.map(lambda raw_record: _parse_function(raw_record))
+    raw_data_images = raw_data_images.map(lambda raw_record: prepare_image(raw_record['image_bytes']))
+
+    raw_data_masks = tf.data.TFRecordDataset(["../tf-records-masks/train_0000-of-0001.tfrecord",
+                                        "../tf-records-masks/test_0000-of-0001.tfrecord"])
+
+    raw_data_masks = raw_data_masks.map(lambda raw_record: _parse_function_mask(raw_record))
+    raw_data_masks = raw_data_masks.map(lambda raw_record: tf.io.decode_png(raw_record))
+
+    ready_data = tf.data.TFRecordDataset.zip((raw_data_images, raw_data_masks))
+    ready_data = ready_data.map(lambda image, mask: prepare_input_output(image, mask))
+    for record in ready_data.take(10):
+        plt.imshow(lab_to_rgb(tf.concat([record[0]['input_1'], record[0]['input_2']], axis=2)))
+        plt.show()
+
 def generate_masks_tf_records(num_masks, output_dir, num_shards):
 
     create_mask_tfrecords(output_dir=output_dir,
@@ -208,25 +235,27 @@ def generate_masks_tf_records(num_masks, output_dir, num_shards):
 
 if __name__ == '__main__':
     # input_dir = '../sample_images'
-    # output_dir = '../tf_records'
-    # num_shards = 500
-    # split_ratio = 0.1
+    # output_dir = '../tf-records'
+    # num_shards = 5
+    # split_ratio = 0.2
 
-    # # generate_tf_records(input_dir, output_dir, num_shards, split_ratio)
+    # generate_tf_records(input_dir, output_dir, num_shards, split_ratio)
     # read_tf_record()
 
-    output_dir_masks = '../tf-records-masks'
-    num_shards = {
-        'train': 1,
-        'validation': 1,
-        'test': 1,
-    }
-    num_masks = {
-        'train': 1000,
-        'validation': 1000,
-        'test': 1000,
-    }
+    # output_dir_masks = '../tf-records-masks'
+    # num_shards = {
+    #     'train': 1,
+    #     'validation': 1,
+    #     'test': 1,
+    # }
+    # num_masks = {
+    #     'train': 1000,
+    #     'validation': 1000,
+    #     'test': 1000,
+    # }
+    # generate_masks_tf_records(num_masks, output_dir_masks, num_shards)
 
-    generate_masks_tf_records(num_masks, output_dir_masks, num_shards)
 
     read_tf_record_mask()
+
+    read_tf_both()

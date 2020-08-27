@@ -140,3 +140,4 @@ models/
 # tfrecords
 tf-records/
 tf-records-masks/
+sample_images/
