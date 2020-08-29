@@ -17,8 +17,15 @@ def generate_data_example(image, shape):
     return l, ground_truth
 
 def generate_mask(hints):
-    mask = np.zeros((256, 256, 1))
-    return mask
+    # because hints are in RGBA, (M x N x 4), we dont care about A
+    hints = hints[..., :3]
+    mask = np.sum(hints, axis=-1)
+    mask = np.minimum(mask, 1)
+    mask = np.expand_dims(mask, axis=-1)
+    _, a, b = get_lab(hints)
+    a /= 128
+    b /= 128
+    return np.dstack((mask, mask * np.dstack((a, b))))
 
 def generate_data(image_directory, l_directory, ab_directory, shape, max_images=100):
     if not os.path.exists(l_directory):
