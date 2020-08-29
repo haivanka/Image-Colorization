@@ -127,7 +127,7 @@
 			var form = $('#fileUploadForm')[0];
 			var data = new FormData(form);
 			var canvas = document.getElementById('canvas');
-			data.append('pixels', canvas.toDataURL())
+            data.set('pixels', canvas.toDataURL())
 
 			$.ajax({
 			    type: "POST",
