@@ -1,4 +1,4 @@
-﻿cycler==0.10.0
+cycler==0.10.0
 decorator==4.4.2
 imageio==2.9.0
 kiwisolver==1.2.0
@@ -14,7 +14,7 @@ tifffile==2020.7.24
 tensorflow>=2.3
 keras
 numpy<1.19.0
-scipy==1.4.1
+scipy==1.10.0
 flask
 Flask-Bootstrap
 
